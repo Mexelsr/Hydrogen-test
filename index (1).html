@@ -1,0 +1,1808 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>EVENT HORIZON // 2.5D Cosmic Driving Simulator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #020308;
+      font-family: 'Inter', sans-serif;
+      color: #f8fafc;
+    }
+    .font-display {
+      font-family: 'Orbitron', sans-serif;
+    }
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+    /* Custom sleek range sliders for Singularity Controls */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 5px;
+      background: rgba(255, 255, 255, 0.14);
+      border-radius: 999px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background: #38bdf8;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.85);
+      cursor: pointer;
+      transition: transform 0.15s ease, background-color 0.15s ease;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+      background: #7dd3fc;
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 15px;
+      height: 15px;
+      border: none;
+      border-radius: 50%;
+      background: #38bdf8;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.85);
+      cursor: pointer;
+    }
+    .glass-panel {
+      background: rgba(6, 10, 22, 0.68);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+    }
+    .control-btn {
+      background: rgba(15, 23, 42, 0.72);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      transition: all 0.1s ease;
+    }
+    .control-btn:active, .control-btn.active {
+      background: rgba(56, 189, 248, 0.32);
+      border-color: rgba(56, 189, 248, 0.85);
+      transform: scale(0.95);
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.45);
+    }
+  </style>
+</head>
+<body class="relative w-screen h-screen overflow-hidden">
+
+  <!-- Full-Viewport Simulation Canvas -->
+  <canvas id="simCanvas"></canvas>
+
+  <!-- Top HUD Overlay -->
+  <header class="fixed top-0 left-0 right-0 z-20 p-3 sm:p-4 flex items-start justify-between pointer-events-none">
+    <!-- Left Telemetry & Title -->
+    <div class="flex flex-col gap-2 pointer-events-auto">
+      <div class="glass-panel rounded-xl px-3.5 py-2.5 flex items-center gap-3">
+        <div class="relative w-3 h-3 flex items-center justify-center">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-300"></span>
+        </div>
+        <div>
+          <h1 class="font-display text-xs sm:text-sm font-bold tracking-widest text-white uppercase">
+            Event Horizon <span class="text-sky-400">//</span> 2.5D
+          </h1>
+          <p class="text-[10px] sm:text-xs text-slate-400 tracking-wide">
+            Gargantua Relativistic Corridor
+          </p>
+        </div>
+      </div>
+
+      <!-- Distance & Relativistic Telemetry Pill -->
+      <div class="glass-panel rounded-xl px-3.5 py-2 flex items-center gap-4 text-xs">
+        <div>
+          <span class="text-[10px] uppercase tracking-wider text-slate-400 block">Distance</span>
+          <span id="hudDistance" class="font-display font-semibold text-slate-100">0.00 GM</span>
+        </div>
+        <div class="h-6 w-px bg-slate-700/60"></div>
+        <div>
+          <span class="text-[10px] uppercase tracking-wider text-slate-400 block">Time Dilation</span>
+          <span id="hudDilation" class="font-display font-semibold text-amber-300">1.00x</span>
+        </div>
+        <div id="nearMissBadge" class="hidden px-2 py-0.5 rounded-md bg-sky-500/20 border border-sky-400/40 text-sky-300 font-display text-[10px] tracking-wider uppercase animate-pulse">
+          Near Miss +Boost
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Action Buttons & Collapsible Singularity Controls -->
+    <div class="flex flex-col items-end gap-2 pointer-events-auto">
+      <div class="flex items-center gap-2">
+        <!-- Audio Toggle Button -->
+        <button id="btnAudio" title="Toggle Procedural Synth Audio"
+          class="glass-panel hover:bg-slate-800/80 text-slate-200 rounded-xl px-3 py-2 text-xs font-medium flex items-center gap-1.5 transition cursor-pointer">
+          <svg id="iconAudioOff" class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+          </svg>
+          <svg id="iconAudioOn" class="w-4 h-4 text-sky-400 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+          </svg>
+          <span id="audioLabel" class="hidden sm:inline">Sound Off</span>
+        </button>
+
+        <!-- Reset Position Button -->
+        <button id="btnReset" title="Reset Position (R)"
+          class="glass-panel hover:bg-slate-800/80 text-slate-200 rounded-xl px-3 py-2 text-xs font-medium flex items-center gap-1.5 transition cursor-pointer">
+          <svg class="w-4 h-4 text-amber-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          <span class="hidden sm:inline">Reset</span>
+        </button>
+
+        <!-- Singularity & Sim Controls Toggle -->
+        <button id="btnToggleControls"
+          class="glass-panel hover:bg-slate-800/80 text-sky-300 border-sky-400/30 rounded-xl px-3 py-2 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+          </svg>
+          <span>Singularity &amp; Sim Controls</span>
+        </button>
+      </div>
+
+      <!-- Collapsible Singularity & Simulation Drawer -->
+      <div id="simControlsDrawer" class="glass-panel rounded-2xl p-4 w-72 sm:w-80 flex flex-col gap-3.5 transition-all duration-200 origin-top-right">
+        <div class="flex items-center justify-between border-b border-slate-700/60 pb-2">
+          <span class="font-display text-[11px] font-bold tracking-wider uppercase text-sky-300">Singularity Parameters</span>
+          <span class="text-[10px] text-slate-400">Real-Time Physics</span>
+        </div>
+
+        <!-- Accretion Disk Brightness -->
+        <div class="flex flex-col gap-1">
+          <div class="flex justify-between text-xs">
+            <label for="sliderBrightness" class="text-slate-300">Accretion Disk Brightness</label>
+            <span id="valBrightness" class="font-display text-amber-300 text-[11px]">1.15x</span>
+          </div>
+          <input id="sliderBrightness" type="range" min="0.4" max="2.0" step="0.05" value="1.15" />
+        </div>
+
+        <!-- Gravitational Lensing Distortion -->
+        <div class="flex flex-col gap-1">
+          <div class="flex justify-between text-xs">
+            <label for="sliderLensing" class="text-slate-300">Lensing Distortion</label>
+            <span id="valLensing" class="font-display text-sky-300 text-[11px]">1.00x</span>
+          </div>
+          <input id="sliderLensing" type="range" min="0.2" max="2.0" step="0.05" value="1.0" />
+        </div>
+
+        <!-- Time Dilation / Curvature Intensity -->
+        <div class="flex flex-col gap-1">
+          <div class="flex justify-between text-xs">
+            <label for="sliderCurvature" class="text-slate-300">Time Dilation / Curvature</label>
+            <span id="valCurvature" class="font-display text-purple-300 text-[11px]">1.00x</span>
+          </div>
+          <input id="sliderCurvature" type="range" min="0.3" max="1.8" step="0.05" value="1.0" />
+        </div>
+
+        <!-- Auto-Drive Demo Mode Toggle -->
+        <div class="flex items-center justify-between pt-1 border-t border-slate-700/60">
+          <div>
+            <span class="text-xs font-medium text-slate-200 block">Auto-Drive Pilot</span>
+            <span class="text-[10px] text-slate-400">Autonomous AI navigation</span>
+          </div>
+          <button id="btnAutoDrive" role="switch" aria-checked="false"
+            class="relative inline-flex h-6 w-11 items-center rounded-full bg-slate-700 transition-colors cursor-pointer">
+            <span id="autoDriveKnob" class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1"></span>
+          </button>
+        </div>
+
+        <!-- Keyboard Controls Legend -->
+        <div class="bg-slate-900/70 rounded-xl p-2.5 text-[11px] text-slate-400 flex flex-wrap gap-x-3 gap-y-1 justify-between border border-slate-800">
+          <span><strong class="text-slate-200">W/↑</strong> Gas</span>
+          <span><strong class="text-slate-200">S/↓</strong> Brake</span>
+          <span><strong class="text-slate-200">A/D</strong> Steer</span>
+          <span><strong class="text-sky-300">Space</strong> Nitro</span>
+          <span><strong class="text-amber-300">R</strong> Reset</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Subtle Status Toast (No alert() ever) -->
+  <div id="statusBanner" class="fixed top-20 left-1/2 -translate-x-1/2 z-30 pointer-events-none opacity-0 transition-opacity duration-300">
+    <div id="statusBannerText" class="glass-panel px-4 py-1.5 rounded-full text-xs font-display tracking-wider uppercase text-sky-300 border-sky-400/40">
+      Relativistic Drive Engaged
+    </div>
+  </div>
+
+  <!-- Bottom HUD: Speedometer, Nitro Gauge & Touch/Mouse Controls -->
+  <footer class="fixed bottom-0 left-0 right-0 z-20 p-3 sm:p-5 flex flex-col sm:flex-row items-center sm:items-end justify-between gap-3 pointer-events-none">
+
+    <!-- Left Touch Steering Pad (Accessible on Mobile & Mouse-Only Play) -->
+    <div class="flex items-center gap-2.5 pointer-events-auto order-2 sm:order-1">
+      <button id="touchLeft" aria-label="Steer Left"
+        class="control-btn w-14 h-14 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center text-slate-200 cursor-pointer">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+        </svg>
+      </button>
+      <button id="touchRight" aria-label="Steer Right"
+        class="control-btn w-14 h-14 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center text-slate-200 cursor-pointer">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Center Digital Speedometer & Nitro Boost Meter -->
+    <div class="glass-panel rounded-2xl px-5 py-3 flex items-center gap-5 pointer-events-auto order-1 sm:order-2">
+      <!-- Speed Readout -->
+      <div class="text-center min-w-[84px]">
+        <div class="flex items-baseline justify-center gap-1">
+          <span id="hudSpeed" class="font-display text-2xl sm:text-3xl font-black tracking-tight text-white">0</span>
+          <span class="text-[10px] font-bold tracking-widest text-sky-400 uppercase">KM/H</span>
+        </div>
+        <div class="text-[10px] uppercase tracking-widest text-slate-400 mt-0.5">Velocity</div>
+      </div>
+
+      <div class="h-9 w-px bg-slate-700/70"></div>
+
+      <!-- Nitro Boost Meter -->
+      <div class="w-32 sm:w-44">
+        <div class="flex justify-between items-center mb-1">
+          <span class="font-display text-[10px] font-bold tracking-wider uppercase text-sky-300">Plasma Nitro</span>
+          <span id="hudBoostPct" class="font-display text-[10px] font-semibold text-slate-300">100%</span>
+        </div>
+        <div class="w-full h-2.5 bg-slate-900/90 rounded-full overflow-hidden p-0.5 border border-slate-700/70">
+          <div id="hudBoostBar" class="h-full rounded-full bg-gradient-to-r from-sky-500 via-cyan-300 to-amber-300 transition-all duration-75" style="width: 100%;"></div>
+        </div>
+        <div class="text-[9px] text-slate-400 mt-1 flex justify-between">
+          <span>SPACE / NITRO</span>
+          <span id="hudGear" class="text-amber-300 font-display font-bold">GEAR 1</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Touch Pedals (Brake, Nitro, Accelerate) -->
+    <div class="flex items-center gap-2 pointer-events-auto order-3">
+      <button id="touchBrake" aria-label="Brake"
+        class="control-btn px-3.5 h-14 sm:h-12 rounded-2xl flex flex-col items-center justify-center text-rose-300 border-rose-500/30 cursor-pointer">
+        <span class="font-display text-[10px] font-bold tracking-wider">BRAKE</span>
+      </button>
+      <button id="touchNitro" aria-label="Nitro Boost"
+        class="control-btn px-3.5 h-14 sm:h-12 rounded-2xl flex flex-col items-center justify-center text-amber-300 border-amber-400/40 cursor-pointer">
+        <span class="font-display text-[10px] font-bold tracking-wider">NITRO</span>
+      </button>
+      <button id="touchGas" aria-label="Accelerate"
+        class="control-btn px-4 h-14 sm:h-12 rounded-2xl flex flex-col items-center justify-center text-sky-300 border-sky-400/40 cursor-pointer">
+        <span class="font-display text-[10px] font-bold tracking-wider">THRUST</span>
+      </button>
+    </div>
+
+  </footer>
+
+  <script>
+    /**
+     * ============================================================================
+     * EVENT HORIZON // 2.5D COSMIC DRIVING SIMULATOR
+     * Architecture:
+     *  1. Procedural Web Audio API Sound Synthesizer (Engine RPM, Nitro Roar, Whoosh)
+     *  2. Gargantua Black Hole & Gravitational Lensing Renderer
+     *  3. OutRun-Style 2.5D Pseudo-3D Road & Traffic Projection Engine
+     *  4. Player Sci-Fi Interceptor Vehicle & Particle FX Renderer
+     *  5. Interactive UI & Physics State Loop
+     * ============================================================================
+     */
+
+    (function () {
+      'use strict';
+
+      // -------------------------------------------------------------------------
+      // 1. PROCEDURAL WEB AUDIO ENGINE
+      // -------------------------------------------------------------------------
+      class CosmicAudioEngine {
+        constructor() {
+          this.ctx = null;
+          this.enabled = false;
+          this.initialized = false;
+          this.engineOsc1 = null;
+          this.engineOsc2 = null;
+          this.engineFilter = null;
+          this.engineGain = null;
+          this.nitroGain = null;
+          this.nitroFilter = null;
+        }
+
+        init() {
+          if (this.initialized) return;
+          try {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            this.ctx = new AudioCtx();
+
+            // Primary turbine/engine oscillators
+            this.engineOsc1 = this.ctx.createOscillator();
+            this.engineOsc2 = this.ctx.createOscillator();
+            this.engineOsc1.type = 'sawtooth';
+            this.engineOsc2.type = 'triangle';
+
+            this.engineFilter = this.ctx.createBiquadFilter();
+            this.engineFilter.type = 'lowpass';
+            this.engineFilter.frequency.value = 180;
+
+            this.engineGain = this.ctx.createGain();
+            this.engineGain.gain.value = 0.0;
+
+            this.engineOsc1.connect(this.engineFilter);
+            this.engineOsc2.connect(this.engineFilter);
+            this.engineFilter.connect(this.engineGain);
+            this.engineGain.connect(this.ctx.destination);
+
+            this.engineOsc1.start();
+            this.engineOsc2.start();
+
+            // Noise buffer for Nitro roar & rumble
+            const bufferSize = this.ctx.sampleRate * 2;
+            const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+            const data = noiseBuffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+              data[i] = Math.random() * 2 - 1;
+            }
+
+            const noiseSource = this.ctx.createBufferSource();
+            noiseSource.buffer = noiseBuffer;
+            noiseSource.loop = true;
+
+            this.nitroFilter = this.ctx.createBiquadFilter();
+            this.nitroFilter.type = 'bandpass';
+            this.nitroFilter.frequency.value = 420;
+            this.nitroFilter.Q.value = 1.4;
+
+            this.nitroGain = this.ctx.createGain();
+            this.nitroGain.gain.value = 0.0;
+
+            noiseSource.connect(this.nitroFilter);
+            this.nitroFilter.connect(this.nitroGain);
+            this.nitroGain.connect(this.ctx.destination);
+            noiseSource.start();
+
+            this.initialized = true;
+          } catch (e) {
+            console.warn('Web Audio unavailable:', e);
+          }
+        }
+
+        toggle() {
+          if (!this.initialized) this.init();
+          if (!this.ctx) return false;
+          if (this.ctx.state === 'suspended') {
+            this.ctx.resume();
+          }
+          this.enabled = !this.enabled;
+          if (!this.enabled && this.engineGain && this.nitroGain) {
+            this.engineGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
+            this.nitroGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
+          }
+          return this.enabled;
+        }
+
+        update(speedRatio, isBoosting, offRoad) {
+          if (!this.enabled || !this.initialized || !this.ctx) return;
+          const now = this.ctx.currentTime;
+
+          // Modulate sci-fi engine harmonic pitch
+          const baseFreq = 46 + speedRatio * 135 + (isBoosting ? 38 : 0);
+          this.engineOsc1.frequency.setTargetAtTime(baseFreq, now, 0.04);
+          this.engineOsc2.frequency.setTargetAtTime(baseFreq * 1.505, now, 0.04);
+          this.engineFilter.frequency.setTargetAtTime(160 + speedRatio * 780 + (isBoosting ? 450 : 0), now, 0.05);
+          this.engineGain.gain.setTargetAtTime(0.055 + speedRatio * 0.05, now, 0.05);
+
+          // Nitro + off-road plasma rumble
+          const targetNoiseGain = isBoosting ? 0.14 : (offRoad && speedRatio > 0.1 ? 0.08 : 0.006);
+          const targetNoiseFreq = isBoosting ? 620 : (offRoad ? 240 : 350);
+          this.nitroGain.gain.setTargetAtTime(targetNoiseGain, now, 0.06);
+          this.nitroFilter.frequency.setTargetAtTime(targetNoiseFreq, now, 0.06);
+        }
+
+        playWhoosh(isCollision = false) {
+          if (!this.enabled || !this.initialized || !this.ctx) return;
+          try {
+            const now = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = isCollision ? 'sawtooth' : 'sine';
+            osc.frequency.setValueAtTime(isCollision ? 130 : 540, now);
+            osc.frequency.exponentialRampToValueAtTime(isCollision ? 34 : 110, now + 0.35);
+
+            gain.gain.setValueAtTime(isCollision ? 0.18 : 0.11, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.36);
+
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.38);
+          } catch (_) {}
+        }
+      }
+
+      const audio = new CosmicAudioEngine();
+
+      // -------------------------------------------------------------------------
+      // 2. SIMULATION CONFIGURATION & LIVE PARAMETERS
+      // -------------------------------------------------------------------------
+      const simConfig = {
+        diskBrightness: 1.15,
+        lensingDistortion: 1.0,
+        curvatureIntensity: 1.0,
+        autoDrive: false
+      };
+
+      // Road & Camera Constants
+      const ROAD = {
+        LENGTH: { NONE: 0, SHORT: 25, MEDIUM: 50, LONG: 100 },
+        HILL: { NONE: 0, LOW: 20, MEDIUM: 40, HIGH: 60 },
+        CURVE: { NONE: 0, EASY: 2, MEDIUM: 4, HARD: 6 }
+      };
+
+      const SEGMENT_LENGTH = 200;
+      const RUMBLE_LENGTH = 3;
+      const ROAD_WIDTH = 2100;
+      const LANES = 3;
+      const CAMERA_HEIGHT = 1050;
+      const FIELD_OF_VIEW = 100;
+      const CAMERA_DEPTH = 1 / Math.tan((FIELD_OF_VIEW / 2) * Math.PI / 180);
+      const DRAW_DISTANCE = 240;
+
+      // Player Physics State
+      const state = {
+        position: 0,
+        playerX: 0,          // -1 (left edge) to +1 (right edge)
+        playerZ: CAMERA_HEIGHT * CAMERA_DEPTH,
+        speed: 0,
+        maxSpeed: 14500,
+        boostMaxSpeed: 21500,
+        accel: 6800,
+        braking: -14000,
+        decel: -3600,
+        offRoadDecel: -8500,
+        offRoadLimit: 5200,
+        centrifugal: 0.34,
+        steerAngle: 0,
+        boostEnergy: 100,
+        isBoosting: false,
+        distanceGM: 0,
+        time: 0,
+        skyOffset: 0,
+        hillPitch: 0,
+        shake: 0,
+        nearMissCooldown: 0
+      };
+
+      // Input State
+      const keys = {
+        left: false,
+        right: false,
+        up: false,
+        down: false,
+        nitro: false
+      };
+
+      // -------------------------------------------------------------------------
+      // 3. CANVAS & RESPONSIVE VIEWPORT SETUP
+      // -------------------------------------------------------------------------
+      const canvas = document.getElementById('simCanvas');
+      const ctx = canvas.getContext('2d', { alpha: false });
+
+      let width = window.innerWidth;
+      let height = window.innerHeight;
+      let dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+      function resizeCanvas() {
+        width = window.innerWidth;
+        height = window.innerHeight;
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.floor(width * dpr);
+        canvas.height = Math.floor(height * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+
+      window.addEventListener('resize', resizeCanvas);
+      resizeCanvas();
+
+      // -------------------------------------------------------------------------
+      // 4. COSMIC STARFIELD, ACCRETION PARTICLES & SPEED LINES
+      // -------------------------------------------------------------------------
+      const STAR_COUNT = 340;
+      const stars = [];
+      const starColors = ['#ffffff', '#e0f2fe', '#bae6fd', '#fef08a', '#fed7aa', '#ddd6fe'];
+
+      for (let i = 0; i < STAR_COUNT; i++) {
+        stars.push({
+          nx: Math.random() * 2 - 1, // normalized -1 to 1
+          ny: Math.random() * 1.15 - 0.15,
+          size: Math.random() * 1.8 + 0.4,
+          twinklePhase: Math.random() * Math.PI * 2,
+          twinkleSpeed: 1 + Math.random() * 3,
+          color: starColors[Math.floor(Math.random() * starColors.length)],
+          layer: 0.3 + Math.random() * 0.7
+        });
+      }
+
+      // Orbiting Relativistic Plasma Filaments in Accretion Disk
+      const PLASMA_STREAKS = 85;
+      const plasmaParticles = [];
+      for (let i = 0; i < PLASMA_STREAKS; i++) {
+        const radiusNorm = Math.pow(Math.random(), 0.75); // denser near ISCO
+        plasmaParticles.push({
+          rNorm: radiusNorm,
+          angle: Math.random() * Math.PI * 2,
+          speed: (1.6 - radiusNorm * 0.95) * (0.8 + Math.random() * 0.4), // Keplerian shear!
+          arcLen: 0.18 + Math.random() * 0.45,
+          thickness: 1.0 + Math.random() * 2.4,
+          alpha: 0.35 + Math.random() * 0.65
+        });
+      }
+
+      // Sparks & Exhaust Particles
+      const particles = [];
+      function spawnParticle(x, y, vx, vy, color, size, life) {
+        if (particles.length > 140) particles.shift();
+        particles.push({ x, y, vx, vy, color, size, life, maxLife: life });
+      }
+
+      // -------------------------------------------------------------------------
+      // 5. PROCEDURAL TRACK & TRAFFIC BUILDER
+      // -------------------------------------------------------------------------
+      let segments = [];
+      let trackLength = 0;
+      let cars = [];
+
+      function easeIn(a, b, percent) {
+        return a + (b - a) * Math.pow(percent, 2);
+      }
+      function easeOut(a, b, percent) {
+        return a + (b - a) * (1 - Math.pow(1 - percent, 2));
+      }
+      function easeInOut(a, b, percent) {
+        return a + (b - a) * ((-Math.cos(percent * Math.PI) / 2) + 0.5);
+      }
+
+      function lastY() {
+        return segments.length === 0 ? 0 : segments[segments.length - 1].p2.world.y;
+      }
+
+      function addSegment(curve, y) {
+        const n = segments.length;
+        const isDark = Math.floor(n / RUMBLE_LENGTH) % 2 === 0;
+        segments.push({
+          index: n,
+          p1: { world: { y: lastY(), z: n * SEGMENT_LENGTH }, camera: {}, screen: {} },
+          p2: { world: { y: y, z: (n + 1) * SEGMENT_LENGTH }, camera: {}, screen: {} },
+          curve: curve,
+          color: {
+            road: isDark ? '#0b1021' : '#10172e',
+            rumble: isDark ? '#38bdf8' : '#f59e0b',
+            lane: isDark ? 'rgba(56, 189, 248, 0.65)' : 'rgba(56, 189, 248, 0.08)',
+            rail: isDark ? 'rgba(56, 189, 248, 0.45)' : 'rgba(168, 85, 247, 0.32)'
+          },
+          sprites: [],
+          cars: [],
+          clip: 0
+        });
+      }
+
+      function addRoad(enter, hold, leave, curve, y) {
+        const startY = lastY();
+        const endY = startY + (y * SEGMENT_LENGTH);
+        const total = enter + hold + leave;
+        for (let n = 0; n < enter; n++) {
+          addSegment(easeIn(0, curve, n / enter), easeInOut(startY, endY, n / total));
+        }
+        for (let n = 0; n < hold; n++) {
+          addSegment(curve, easeInOut(startY, endY, (enter + n) / total));
+        }
+        for (let n = 0; n < leave; n++) {
+          addSegment(easeInOut(curve, 0, n / leave), easeInOut(startY, endY, (enter + hold + n) / total));
+        }
+      }
+
+      function buildTrack() {
+        segments = [];
+
+        // Opening straight gazing directly into Gargantua
+        addRoad(ROAD.LENGTH.SHORT, ROAD.LENGTH.MEDIUM, ROAD.LENGTH.SHORT, ROAD.CURVE.NONE, ROAD.HILL.NONE);
+        // Sweeping cosmic curve + gentle rise
+        addRoad(ROAD.LENGTH.MEDIUM, ROAD.LENGTH.LONG, ROAD.LENGTH.MEDIUM, ROAD.CURVE.MEDIUM, ROAD.HILL.MEDIUM);
+        // S-Curve chicane descending toward accretion plane
+        addRoad(ROAD.LENGTH.MEDIUM, ROAD.LENGTH.MEDIUM, ROAD.LENGTH.MEDIUM, -ROAD.CURVE.HARD, -ROAD.HILL.LOW);
+        addRoad(ROAD.LENGTH.MEDIUM, ROAD.LENGTH.MEDIUM, ROAD.LENGTH.MEDIUM, ROAD.CURVE.HARD, ROAD.HILL.HIGH);
+        // High-speed crest & dip roller-coaster
+        addRoad(ROAD.LENGTH.SHORT, ROAD.LENGTH.MEDIUM, ROAD.LENGTH.SHORT, ROAD.CURVE.EASY, -ROAD.HILL.HIGH);
+        addRoad(ROAD.LENGTH.MEDIUM, ROAD.LENGTH.LONG, ROAD.LENGTH.MEDIUM, -ROAD.CURVE.MEDIUM, ROAD.HILL.MEDIUM);
+        // Long dramatic sweep
+        addRoad(ROAD.LENGTH.LONG, ROAD.LENGTH.LONG, ROAD.LENGTH.LONG, ROAD.CURVE.MEDIUM, -ROAD.HILL.MEDIUM);
+        // Final S-curve loop back to origin
+        addRoad(ROAD.LENGTH.MEDIUM, ROAD.LENGTH.MEDIUM, ROAD.LENGTH.MEDIUM, -ROAD.CURVE.EASY, ROAD.HILL.LOW);
+        addRoad(ROAD.LENGTH.SHORT, ROAD.LENGTH.MEDIUM, ROAD.LENGTH.SHORT, ROAD.CURVE.NONE, -lastY() / SEGMENT_LENGTH);
+
+        trackLength = segments.length * SEGMENT_LENGTH;
+
+        // Populate Roadside Pylons, Floating Space Rocks & Overhead Energy Arches
+        for (let i = 10; i < segments.length - 10; i++) {
+          if (i % 12 === 0) {
+            segments[i].sprites.push({ type: 'pylon', offset: -1.28 });
+            segments[i].sprites.push({ type: 'pylon', offset: 1.28 });
+          }
+          if (i % 48 === 0) {
+            segments[i].sprites.push({ type: 'arch', offset: 0 });
+          }
+          if (i % 9 === 0) {
+            const side = (i % 18 === 0) ? -1 : 1;
+            const dist = 1.9 + (Math.sin(i * 1.7) * 0.5 + 0.5) * 2.6;
+            segments[i].sprites.push({
+              type: 'asteroid',
+              offset: side * dist,
+              yOffset: Math.sin(i * 0.9) * 420 + 180,
+              scale: 0.7 + (i % 5) * 0.25,
+              rot: i * 0.6
+            });
+          }
+        }
+
+        // Populate AI Hover-Cars & Drones
+        cars = [];
+        const totalCars = 26;
+        const lanePositions = [-0.62, 0, 0.62];
+        const carPalettes = [
+          { body: '#38bdf8', glow: '#7dd3fc', trim: '#0284c7' },
+          { body: '#f59e0b', glow: '#fde047', trim: '#b45309' },
+          { body: '#c084fc', glow: '#e9d5ff', trim: '#7e22ce' },
+          { body: '#fb7185', glow: '#fecdd3', trim: '#be123c' }
+        ];
+
+        for (let i = 0; i < totalCars; i++) {
+          const z = (Math.floor((i + 1) * (segments.length / totalCars)) * SEGMENT_LENGTH) % trackLength;
+          const lane = lanePositions[i % lanePositions.length];
+          const palette = carPalettes[i % carPalettes.length];
+          cars.push({
+            offset: lane,
+            z: z,
+            speed: 4200 + (i % 5) * 950,
+            palette: palette,
+            hoverPhase: Math.random() * Math.PI * 2,
+            nearMissed: false
+          });
+        }
+      }
+
+      buildTrack();
+
+      function findSegment(z) {
+        const len = segments.length;
+        const idx = Math.floor(z / SEGMENT_LENGTH) % len;
+        return segments[idx < 0 ? idx + len : idx];
+      }
+
+      // -------------------------------------------------------------------------
+      // 6. GARGANTUA SUPERMASSIVE BLACK HOLE RENDERER
+      // -------------------------------------------------------------------------
+      function renderBlackHoleAndCosmos(horizonY) {
+        // 1. Deep Cosmic Void Gradient
+        const skyGrad = ctx.createLinearGradient(0, 0, 0, Math.max(horizonY + 80, height * 0.7));
+        skyGrad.addColorStop(0, '#010206');
+        skyGrad.addColorStop(0.55, '#050816');
+        skyGrad.addColorStop(1, '#0b1126');
+        ctx.fillStyle = skyGrad;
+        ctx.fillRect(0, 0, width, height);
+
+        // Black hole focal center with subtle parallax tracking road curves & hills
+        const minDim = Math.min(width, height);
+        const bhRadius = Math.max(46, minDim * 0.115); // Event Horizon Shadow Radius
+        const bhX = width * 0.5 + state.skyOffset * width * 0.28;
+        const bhY = Math.min(height * 0.56, Math.max(height * 0.24, horizonY - bhRadius * 0.42));
+
+        const brightness = simConfig.diskBrightness;
+        const lensing = simConfig.lensingDistortion;
+
+        // 2. Subtle Cosmic Nebula Glow behind Gargantua
+        const nebulaGrad = ctx.createRadialGradient(bhX, bhY, bhRadius * 0.5, bhX, bhY, bhRadius * 5.2);
+        nebulaGrad.addColorStop(0, `rgba(251, 146, 60, ${0.18 * brightness})`);
+        nebulaGrad.addColorStop(0.35, `rgba(56, 189, 248, ${0.09 * brightness})`);
+        nebulaGrad.addColorStop(0.7, 'rgba(30, 27, 75, 0.05)');
+        nebulaGrad.addColorStop(1, 'rgba(2, 3, 8, 0)');
+        ctx.fillStyle = nebulaGrad;
+        ctx.fillRect(0, 0, width, height);
+
+        // 3. Multi-layered Starfield with Gravitational Einstein Lensing
+        const einsteinRadius = bhRadius * (1.85 * lensing);
+        for (let i = 0; i < stars.length; i++) {
+          const s = stars[i];
+          // Wrap horizontal parallax smoothly
+          let sx = ((s.nx + state.skyOffset * s.layer * 0.65 + 3) % 2 - 1) * (width * 0.58) + width * 0.5;
+          let sy = s.ny * (height * 0.75) - state.hillPitch * 0.15 * s.layer;
+
+          if (sy < -10 || sy > height * 0.85) continue;
+
+          const dx = sx - bhX;
+          const dy = sy - bhY;
+          const dist = Math.hypot(dx, dy);
+
+          // Skip stars swallowed inside the event horizon shadow
+          if (dist < bhRadius * 0.98) continue;
+
+          const twinkle = 0.65 + 0.35 * Math.sin(state.time * s.twinkleSpeed + s.twinklePhase);
+          ctx.fillStyle = s.color;
+          ctx.globalAlpha = twinkle;
+
+          // Gravitational lensing deflection near the Einstein radius
+          if (dist < einsteinRadius * 2.4 && lensing > 0.25) {
+            const deflection = (einsteinRadius * einsteinRadius) / Math.max(dist, bhRadius * 1.05);
+            const lensedDist = dist + deflection * 0.32;
+            const angle = Math.atan2(dy, dx);
+            const lx = bhX + Math.cos(angle) * lensedDist;
+            const ly = bhY + Math.sin(angle) * lensedDist;
+
+            // Tangential Einstein stretching near the black hole
+            const stretch = Math.min(5.5, 1 + (einsteinRadius / dist) * 2.2 * lensing);
+            ctx.save();
+            ctx.translate(lx, ly);
+            ctx.rotate(angle + Math.PI / 2);
+            ctx.beginPath();
+            ctx.ellipse(0, 0, s.size * stretch, s.size * 0.7, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          } else {
+            ctx.fillRect(sx, sy, s.size, s.size);
+          }
+        }
+        ctx.globalAlpha = 1.0;
+
+        // -----------------------------------------------------------------------
+        // 4. GRAVITATIONAL LENSING ARCHES (Warped Far-Side Accretion Disk)
+        // Light from the rear accretion disk bends over the top and under the
+        // bottom of the event horizon shadow.
+        // -----------------------------------------------------------------------
+        ctx.save();
+        ctx.translate(bhX, bhY);
+        const diskTilt = -0.14; // Subtle cinematic tilt
+        ctx.rotate(diskTilt);
+
+        const archOuterR = bhRadius * (1.58 + 0.34 * lensing);
+        const archInnerR = bhRadius * 1.02;
+
+        // Helper to create Doppler-shifted gradient across the horizontal axis
+        // Left side (approaching) = hot white/cyan; Right side (receding) = gold/amber/crimson
+        function createDopplerGradient(spanX, alphaScale) {
+          const grad = ctx.createLinearGradient(-spanX, 0, spanX, 0);
+          const a = Math.min(1, alphaScale * brightness);
+          grad.addColorStop(0.00, `rgba(186, 230, 253, ${0.15 * a})`);
+          grad.addColorStop(0.16, `rgba(224, 242, 254, ${0.95 * a})`);
+          grad.addColorStop(0.32, `rgba(255, 255, 255, ${1.00 * a})`);
+          grad.addColorStop(0.50, `rgba(253, 224, 71, ${0.90 * a})`);
+          grad.addColorStop(0.68, `rgba(251, 146, 60, ${0.72 * a})`);
+          grad.addColorStop(0.85, `rgba(220, 38, 38, ${0.42 * a})`);
+          grad.addColorStop(1.00, `rgba(127, 29, 29, ${0.08 * a})`);
+          return grad;
+        }
+
+        // Upper Gravitational Lensing Arch (Over Top Hemisphere)
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(0, 0, archOuterR, Math.PI, 0, false);
+        ctx.arc(0, 0, archInnerR, 0, Math.PI, true);
+        ctx.closePath();
+
+        const upperHaloGrad = ctx.createRadialGradient(0, 0, archInnerR, 0, 0, archOuterR);
+        upperHaloGrad.addColorStop(0.0, `rgba(255, 251, 235, ${Math.min(1, 0.95 * brightness)})`);
+        upperHaloGrad.addColorStop(0.35, `rgba(253, 186, 116, ${Math.min(1, 0.65 * brightness)})`);
+        upperHaloGrad.addColorStop(0.75, `rgba(234, 88, 12, ${Math.min(1, 0.28 * brightness)})`);
+        upperHaloGrad.addColorStop(1.0, 'rgba(124, 45, 18, 0)');
+        ctx.fillStyle = upperHaloGrad;
+        ctx.fill();
+
+        // Doppler-beamed luminous filament inside upper lensed arch
+        ctx.strokeStyle = createDopplerGradient(archOuterR, 0.85);
+        ctx.lineWidth = Math.max(3, bhRadius * 0.14 * lensing);
+        ctx.beginPath();
+        ctx.arc(0, 0, (archInnerR + archOuterR) * 0.46, Math.PI * 1.04, -Math.PI * 0.04, false);
+        ctx.stroke();
+        ctx.restore();
+
+        // Lower Gravitational Lensing Arch (Under Bottom Hemisphere)
+        const lowerOuterR = bhRadius * (1.36 + 0.22 * lensing);
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(0, 0, lowerOuterR, 0, Math.PI, false);
+        ctx.arc(0, 0, archInnerR, Math.PI, 0, true);
+        ctx.closePath();
+
+        const lowerHaloGrad = ctx.createRadialGradient(0, 0, archInnerR, 0, 0, lowerOuterR);
+        lowerHaloGrad.addColorStop(0.0, `rgba(254, 240, 138, ${Math.min(1, 0.82 * brightness)})`);
+        lowerHaloGrad.addColorStop(0.5, `rgba(249, 115, 22, ${Math.min(1, 0.42 * brightness)})`);
+        lowerHaloGrad.addColorStop(1.0, 'rgba(124, 45, 18, 0)');
+        ctx.fillStyle = lowerHaloGrad;
+        ctx.fill();
+
+        ctx.strokeStyle = createDopplerGradient(lowerOuterR, 0.65);
+        ctx.lineWidth = Math.max(2, bhRadius * 0.09 * lensing);
+        ctx.beginPath();
+        ctx.arc(0, 0, (archInnerR + lowerOuterR) * 0.48, Math.PI * 0.06, Math.PI * 0.94, false);
+        ctx.stroke();
+        ctx.restore();
+
+        // -----------------------------------------------------------------------
+        // 5. REAR HALF OF PRIMARY EQUATORIAL ACCRETION DISK (Behind Shadow)
+        // -----------------------------------------------------------------------
+        const diskRx = bhRadius * 3.75;
+        const diskRy = bhRadius * 0.56;
+
+        function drawAccretionDiskHalf(isFrontHalf) {
+          ctx.save();
+          ctx.beginPath();
+          if (isFrontHalf) {
+            ctx.rect(-diskRx * 1.2, 0, diskRx * 2.4, diskRy * 2.2);
+          } else {
+            ctx.rect(-diskRx * 1.2, -diskRy * 2.2, diskRx * 2.4, diskRy * 2.2);
+          }
+          ctx.clip();
+
+          // Broad incandescent plasma disk base
+          ctx.fillStyle = createDopplerGradient(diskRx, 0.78);
+          ctx.beginPath();
+          ctx.ellipse(0, 0, diskRx, diskRy, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Concentrated inner ISCO hot ring
+          ctx.strokeStyle = createDopplerGradient(diskRx * 0.72, 1.0);
+          ctx.lineWidth = Math.max(4, bhRadius * 0.22);
+          ctx.beginPath();
+          ctx.ellipse(0, 0, bhRadius * 1.68, diskRy * 0.46, 0, 0, Math.PI * 2);
+          ctx.stroke();
+
+          // Animated turbulent relativistic plasma rings & streaks
+          for (let i = 0; i < plasmaParticles.length; i++) {
+            const p = plasmaParticles[i];
+            const rx = bhRadius * (1.16 + p.rNorm * 2.45);
+            const ry = diskRy * (0.31 + p.rNorm * 0.66);
+            const currentAngle = p.angle + state.time * p.speed * 0.65;
+
+            // Compute Doppler shift factor from X coordinate (-1 left = bright blue-white, +1 right = red-amber)
+            const cosA = Math.cos(currentAngle);
+            const doppler = 0.5 - cosA * 0.5; // 1.0 on left, 0.0 on right
+
+            let strokeColor;
+            if (doppler > 0.65) {
+              strokeColor = `rgba(224, 247, 255, ${Math.min(1, p.alpha * (0.6 + doppler * 0.5) * brightness)})`;
+            } else if (doppler > 0.35) {
+              strokeColor = `rgba(253, 224, 71, ${Math.min(1, p.alpha * 0.8 * brightness)})`;
+            } else {
+              strokeColor = `rgba(234, 88, 12, ${Math.min(1, p.alpha * 0.55 * brightness)})`;
+            }
+
+            ctx.strokeStyle = strokeColor;
+            ctx.lineWidth = p.thickness;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, rx, ry, 0, currentAngle, currentAngle + p.arcLen);
+            ctx.stroke();
+          }
+
+          ctx.restore();
+        }
+
+        // Draw back half of disk before the event horizon shadow
+        drawAccretionDiskHalf(false);
+
+        // -----------------------------------------------------------------------
+        // 6. PITCH-BLACK EVENT HORIZON SHADOW & RAZOR-SHARP PHOTON SPHERE
+        // -----------------------------------------------------------------------
+        // Outer photon glow
+        const photonGlow = ctx.createRadialGradient(
+          -bhRadius * 0.15, 0, bhRadius * 0.94,
+          0, 0, bhRadius * 1.18
+        );
+        photonGlow.addColorStop(0, 'rgba(0, 0, 0, 1)');
+        photonGlow.addColorStop(0.35, `rgba(255, 255, 255, ${Math.min(1, 0.95 * brightness)})`);
+        photonGlow.addColorStop(0.6, `rgba(251, 191, 36, ${Math.min(1, 0.55 * brightness)})`);
+        photonGlow.addColorStop(1, 'rgba(251, 146, 60, 0)');
+        ctx.fillStyle = photonGlow;
+        ctx.beginPath();
+        ctx.arc(0, 0, bhRadius * 1.18, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Pure pitch-black Event Horizon Shadow
+        ctx.fillStyle = '#000000';
+        ctx.beginPath();
+        ctx.arc(0, 0, bhRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Razor-sharp Photon Ring on the event horizon edge (Doppler-brightened on left)
+        ctx.strokeStyle = createDopplerGradient(bhRadius * 1.05, 1.15);
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.arc(0, 0, bhRadius * 1.005, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // -----------------------------------------------------------------------
+        // 7. FRONT HALF OF EQUATORIAL ACCRETION DISK (Crossing in Front of Shadow)
+        // -----------------------------------------------------------------------
+        drawAccretionDiskHalf(true);
+
+        ctx.restore(); // restore black hole center & tilt transform
+      }
+
+      // -------------------------------------------------------------------------
+      // 7. 2.5D PSEUDO-3D PROJECTION & ROAD RENDERING
+      // -------------------------------------------------------------------------
+      function project(p, cameraX, cameraY, cameraZ, cameraDepth, width, height, roadWidth) {
+        p.camera.x = (p.world.x || 0) - cameraX;
+        p.camera.y = (p.world.y || 0) - cameraY;
+        p.camera.z = (p.world.z || 0) - cameraZ;
+        const z = Math.max(1, p.camera.z);
+        p.screen.scale = cameraDepth / z;
+        p.screen.x = Math.round((width / 2) + (p.screen.scale * p.camera.x * width / 2));
+        p.screen.y = Math.round((height / 2) - (p.screen.scale * p.camera.y * height / 2));
+        p.screen.w = Math.round((p.screen.scale * roadWidth * width / 2));
+      }
+
+      function drawPolygon(x1, y1, x2, y2, x3, y3, x4, y4, color) {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.lineTo(x3, y3);
+        ctx.lineTo(x4, y4);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      function drawSegment(x1, y1, w1, x2, y2, w2, color) {
+        const r1 = w1 * 0.065;
+        const r2 = w2 * 0.065;
+        const l1 = w1 * 0.015;
+        const l2 = w2 * 0.015;
+
+        // 1. Abyssal Space Grid / Floating Track Understructure
+        const spaceSpan1 = w1 * 3.8;
+        const spaceSpan2 = w2 * 3.8;
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.07)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x1 - spaceSpan1, y1);
+        ctx.lineTo(x1 + spaceSpan1, y1);
+        ctx.stroke();
+
+        // Subtle glowing cyan energy aura beneath the floating road deck
+        drawPolygon(
+          x1 - w1 * 1.12, y1,
+          x1 + w1 * 1.12, y1,
+          x2 + w2 * 1.12, y2,
+          x2 - w2 * 1.12, y2,
+          'rgba(14, 165, 233, 0.14)'
+        );
+
+        // 2. Main Dark Obsidian Highway Surface
+        drawPolygon(x1 - w1, y1, x1 + w1, y1, x2 + w2, y2, x2 - w2, y2, color.road);
+
+        // 3. Alternating Neon Rumble Strips on Road Edges
+        drawPolygon(x1 - w1 - r1, y1, x1 - w1, y1, x2 - w2, y2, x2 - w2 - r2, y2, color.rumble);
+        drawPolygon(x1 + w1, y1, x1 + w1 + r1, y1, x2 + w2 + r2, y2, x2 + w2, y2, color.rumble);
+
+        // 4. Translucent Energy Guardrails
+        const railH1 = w1 * 0.055;
+        const railH2 = w2 * 0.055;
+        drawPolygon(
+          x1 - w1 - r1, y1,
+          x1 - w1 - r1, y1 - railH1,
+          x2 - w2 - r2, y2 - railH2,
+          x2 - w2 - r2, y2,
+          color.rail
+        );
+        drawPolygon(
+          x1 + w1 + r1, y1,
+          x1 + w1 + r1, y1 - railH1,
+          x2 + w2 + r2, y2 - railH2,
+          x2 + w2 + r2, y2,
+          color.rail
+        );
+
+        // 5. Glowing Lane Dividers (3-lane highway)
+        const laneW1 = (w1 * 2) / LANES;
+        const laneW2 = (w2 * 2) / LANES;
+        let lanex1 = x1 - w1 + laneW1;
+        let lanex2 = x2 - w2 + laneW2;
+        for (let lane = 1; lane < LANES; lane++) {
+          drawPolygon(
+            lanex1 - l1 / 2, y1,
+            lanex1 + l1 / 2, y1,
+            lanex2 + l2 / 2, y2,
+            lanex2 - l2 / 2, y2,
+            color.lane
+          );
+          lanex1 += laneW1;
+          lanex2 += laneW2;
+        }
+      }
+
+      // -------------------------------------------------------------------------
+      // 8. ROADSIDE SPRITES, OVERHEAD ARCHES & AI HOVER-TRAFFIC RENDERERS
+      // -------------------------------------------------------------------------
+      function drawRoadsideSprite(sprite, scale, destX, destY, roadW) {
+        if (scale <= 0.0001) return;
+
+        if (sprite.type === 'pylon') {
+          const h = Math.max(4, roadW * 0.24);
+          const w = Math.max(1.5, roadW * 0.016);
+          // Pylon shaft
+          ctx.fillStyle = '#1e293b';
+          ctx.fillRect(destX - w * 0.5, destY - h, w, h);
+          // Glowing cyan beacon orb
+          const orbR = Math.max(2, w * 1.4);
+          ctx.fillStyle = '#38bdf8';
+          ctx.beginPath();
+          ctx.arc(destX, destY - h, orbR, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (sprite.type === 'arch') {
+          const halfSpan = roadW * 1.12;
+          const archH = roadW * 0.58;
+          ctx.save();
+          ctx.strokeStyle = 'rgba(56, 189, 248, 0.55)';
+          ctx.lineWidth = Math.max(2, roadW * 0.022);
+          ctx.beginPath();
+          ctx.moveTo(destX - halfSpan, destY);
+          ctx.lineTo(destX - halfSpan * 0.85, destY - archH);
+          ctx.lineTo(destX + halfSpan * 0.85, destY - archH);
+          ctx.lineTo(destX + halfSpan, destY);
+          ctx.stroke();
+
+          // Top amber warning light
+          ctx.fillStyle = '#fbbf24';
+          ctx.beginPath();
+          ctx.arc(destX, destY - archH, Math.max(2, roadW * 0.025), 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        } else if (sprite.type === 'asteroid') {
+          const r = Math.max(3, roadW * 0.14 * sprite.scale);
+          const floatY = destY - roadW * 0.18 - Math.sin(state.time * 1.5 + sprite.rot) * r * 0.3;
+          ctx.save();
+          ctx.translate(destX, floatY);
+          ctx.rotate(sprite.rot + state.time * 0.25);
+
+          // Faceted dark space rock catching warm accretion rim light
+          ctx.fillStyle = '#0f172a';
+          ctx.strokeStyle = 'rgba(251, 146, 60, 0.55)';
+          ctx.lineWidth = Math.max(1, r * 0.08);
+          ctx.beginPath();
+          const sides = 7;
+          for (let k = 0; k < sides; k++) {
+            const ang = (k / sides) * Math.PI * 2;
+            const rad = r * (0.78 + 0.24 * Math.sin(k * 2.4 + sprite.rot));
+            const px = Math.cos(ang) * rad;
+            const py = Math.sin(ang) * rad;
+            if (k === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          }
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+
+      function drawTrafficCar(car, scale, destX, destY, roadW) {
+        const carW = roadW * 0.24;
+        const carH = carW * 0.44;
+        if (carW < 2) return;
+
+        const hoverBob = Math.sin(state.time * 5 + car.hoverPhase) * carH * 0.12;
+        const y = destY - carH * 0.25 + hoverBob;
+
+        ctx.save();
+        ctx.translate(destX, y);
+
+        // Hover shadow / plasma cushion on road
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.25)';
+        ctx.beginPath();
+        ctx.ellipse(0, carH * 0.25 - hoverBob, carW * 0.48, carH * 0.14, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Main sleek hover-car chassis
+        ctx.fillStyle = '#0f172a';
+        ctx.strokeStyle = car.palette.body;
+        ctx.lineWidth = Math.max(1.2, carW * 0.03);
+        ctx.beginPath();
+        ctx.moveTo(-carW * 0.5, 0);
+        ctx.lineTo(-carW * 0.38, -carH * 0.55);
+        ctx.lineTo(-carW * 0.22, -carH * 0.95);
+        ctx.lineTo(carW * 0.22, -carH * 0.95);
+        ctx.lineTo(carW * 0.38, -carH * 0.55);
+        ctx.lineTo(carW * 0.5, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Rear glowing thruster strip
+        ctx.fillStyle = car.palette.glow;
+        ctx.fillRect(-carW * 0.34, -carH * 0.38, carW * 0.68, carH * 0.16);
+
+        ctx.restore();
+      }
+
+      // -------------------------------------------------------------------------
+      // 9. PLAYER SCI-FI INTERCEPTOR CAR RENDERER
+      // -------------------------------------------------------------------------
+      function renderPlayerInterceptor(speedPercent, isBraking, isBoosting, steerLean) {
+        const bounce = (Math.random() - 0.5) * speedPercent * 2.6 + (state.shake * (Math.random() - 0.5) * 14);
+        const cx = width * 0.5 + (Math.random() - 0.5) * state.shake * 10;
+        const cy = height - Math.max(76, height * 0.115) + bounce;
+
+        const carW = Math.min(220, Math.max(138, width * 0.17));
+        const carH = carW * 0.44;
+
+        ctx.save();
+        ctx.translate(cx, cy);
+        // Dynamic chassis roll when steering into curves
+        ctx.rotate(steerLean * 0.085);
+
+        // 1. Ground Plasma Hover Aura
+        const underGlow = ctx.createRadialGradient(0, carH * 0.25, carW * 0.05, 0, carH * 0.25, carW * 0.65);
+        underGlow.addColorStop(0, isBoosting ? 'rgba(56, 189, 248, 0.55)' : 'rgba(56, 189, 248, 0.28)');
+        underGlow.addColorStop(1, 'rgba(56, 189, 248, 0)');
+        ctx.fillStyle = underGlow;
+        ctx.beginPath();
+        ctx.ellipse(0, carH * 0.25, carW * 0.65, carH * 0.25, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 2. Sculpted Widebody Rear Diffuser & Main Hull
+        const hullGrad = ctx.createLinearGradient(0, -carH, 0, carH * 0.2);
+        hullGrad.addColorStop(0, '#334155');
+        hullGrad.addColorStop(0.45, '#0f172a');
+        hullGrad.addColorStop(1, '#020617');
+
+        ctx.fillStyle = hullGrad;
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(-carW * 0.54, carH * 0.12);
+        ctx.lineTo(-carW * 0.48, -carH * 0.35);
+        ctx.lineTo(-carW * 0.30, -carH * 0.78);
+        ctx.lineTo(carW * 0.30, -carH * 0.78);
+        ctx.lineTo(carW * 0.48, -carH * 0.35);
+        ctx.lineTo(carW * 0.54, carH * 0.12);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // 3. Reflective Canopy Glass (Catching Gargantua's golden-blue accretion glow)
+        const glassGrad = ctx.createLinearGradient(-carW * 0.22, -carH * 0.75, carW * 0.22, -carH * 0.42);
+        glassGrad.addColorStop(0, 'rgba(186, 230, 253, 0.85)');
+        glassGrad.addColorStop(0.5, 'rgba(253, 224, 71, 0.55)');
+        glassGrad.addColorStop(1, 'rgba(15, 23, 42, 0.95)');
+
+        ctx.fillStyle = glassGrad;
+        ctx.beginPath();
+        ctx.moveTo(-carW * 0.24, -carH * 0.45);
+        ctx.lineTo(-carW * 0.17, -carH * 0.74);
+        ctx.lineTo(carW * 0.17, -carH * 0.74);
+        ctx.lineTo(carW * 0.24, -carH * 0.45);
+        ctx.closePath();
+        ctx.fill();
+
+        // 4. Aerodynamic Elevated Rear Spoiler Wing
+        ctx.fillStyle = '#090d16';
+        ctx.strokeStyle = '#7dd3fc';
+        ctx.lineWidth = 1.5;
+        // Wing struts
+        ctx.fillRect(-carW * 0.31, -carH * 0.52, carW * 0.04, carH * 0.22);
+        ctx.fillRect(carW * 0.27, -carH * 0.52, carW * 0.04, carH * 0.22);
+        // Main wing blade
+        ctx.beginPath();
+        ctx.moveTo(-carW * 0.52, -carH * 0.56);
+        ctx.lineTo(carW * 0.52, -carH * 0.56);
+        ctx.lineTo(carW * 0.47, -carH * 0.48);
+        ctx.lineTo(-carW * 0.47, -carH * 0.48);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // 5. Reactive LED Tail Light Bar & Brake Lights
+        const tailColor = isBraking ? '#ff1e56' : '#f43f5e';
+        ctx.fillStyle = tailColor;
+        ctx.shadowColor = tailColor;
+        ctx.shadowBlur = isBraking ? 18 : 8;
+        ctx.fillRect(-carW * 0.42, -carH * 0.28, carW * 0.84, carH * 0.08);
+        ctx.shadowBlur = 0;
+
+        // 6. Twin Relativistic Plasma Exhaust Thrusters & Nitro Plumes
+        const nozzleOffsets = [-carW * 0.20, carW * 0.20];
+        for (let i = 0; i < nozzleOffsets.length; i++) {
+          const nx = nozzleOffsets[i];
+          const ny = -carH * 0.05;
+
+          // Exhaust housing
+          ctx.fillStyle = '#1e293b';
+          ctx.beginPath();
+          ctx.arc(nx, ny, carW * 0.065, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Flame plume when accelerating or boosting
+          if (speedPercent > 0.05 || isBoosting) {
+            const flameLen = (isBoosting ? 1.55 : 0.45 + speedPercent * 0.55) * carH * (0.85 + Math.random() * 0.3);
+            const flameGrad = ctx.createRadialGradient(nx, ny, 2, nx, ny + flameLen * 0.4, flameLen);
+            flameGrad.addColorStop(0, '#ffffff');
+            flameGrad.addColorStop(0.3, isBoosting ? '#38bdf8' : '#fbbf24');
+            flameGrad.addColorStop(0.75, isBoosting ? 'rgba(99, 102, 241, 0.5)' : 'rgba(234, 88, 12, 0.35)');
+            flameGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+            ctx.fillStyle = flameGrad;
+            ctx.beginPath();
+            ctx.ellipse(nx, ny + flameLen * 0.35, carW * (isBoosting ? 0.08 : 0.055), flameLen, 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        ctx.restore();
+
+        // 7. Relativistic Speed Lines at High Velocity / Nitro Boost
+        if (speedPercent > 0.72 || isBoosting) {
+          const intensity = isBoosting ? 1.0 : (speedPercent - 0.72) / 0.28;
+          const lineCount = Math.floor(18 * intensity);
+          ctx.save();
+          ctx.strokeStyle = isBoosting ? 'rgba(125, 211, 252, 0.38)' : 'rgba(255, 255, 255, 0.22)';
+          ctx.lineWidth = 1.5;
+          for (let i = 0; i < lineCount; i++) {
+            const angle = (i / lineCount) * Math.PI * 2 + state.time * 3.1;
+            const innerR = Math.min(width, height) * (0.36 + (i % 3) * 0.06);
+            const outerR = Math.max(width, height) * 0.78;
+            ctx.beginPath();
+            ctx.moveTo(width * 0.5 + Math.cos(angle) * innerR, height * 0.45 + Math.sin(angle) * innerR);
+            ctx.lineTo(width * 0.5 + Math.cos(angle) * outerR, height * 0.45 + Math.sin(angle) * outerR);
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
+      }
+
+      // -------------------------------------------------------------------------
+      // 10. SIMULATION PHYSICS & AI TRAFFIC UPDATE STEP
+      // -------------------------------------------------------------------------
+      function update(dt) {
+        state.time += dt;
+        if (state.shake > 0) state.shake = Math.max(0, state.shake - dt * 2.5);
+        if (state.nearMissCooldown > 0) state.nearMissCooldown = Math.max(0, state.nearMissCooldown - dt);
+
+        const baseSegment = findSegment(state.position);
+        const playerSegment = findSegment(state.position + state.playerZ);
+        const playerPercent = ((state.position + state.playerZ) % SEGMENT_LENGTH) / SEGMENT_LENGTH;
+        const speedPercent = state.speed / state.maxSpeed;
+
+        // Auto-Drive Pilot AI logic
+        let steerLeft = keys.left;
+        let steerRight = keys.right;
+        let throttle = keys.up;
+        let braking = keys.down;
+        let wantNitro = keys.nitro;
+
+        if (simConfig.autoDrive) {
+          throttle = true;
+          braking = false;
+          // Look ahead for traffic & curves
+          let targetX = 0;
+          for (let i = 1; i <= 18; i++) {
+            const aheadSeg = segments[(playerSegment.index + i) % segments.length];
+            if (aheadSeg.cars.length > 0) {
+              const obstacle = aheadSeg.cars[0];
+              targetX = obstacle.offset > 0 ? -0.58 : 0.58;
+              break;
+            }
+          }
+          const diffX = targetX - state.playerX;
+          if (diffX < -0.05) steerLeft = true;
+          if (diffX > 0.05) steerRight = true;
+          wantNitro = Math.abs(playerSegment.curve) < 1.5 && state.boostEnergy > 45;
+        }
+
+        // Nitro Boost Management
+        if (wantNitro && state.boostEnergy > 4 && (throttle || state.speed > 2500)) {
+          state.isBoosting = true;
+          state.boostEnergy = Math.max(0, state.boostEnergy - dt * 28);
+        } else {
+          state.isBoosting = false;
+          state.boostEnergy = Math.min(100, state.boostEnergy + dt * 11);
+        }
+
+        // Acceleration & Braking
+        const currentTopSpeed = state.isBoosting ? state.boostMaxSpeed : state.maxSpeed;
+        if (throttle) {
+          const boostAccel = state.isBoosting ? state.accel * 1.85 : state.accel;
+          state.speed += boostAccel * dt;
+        } else if (braking) {
+          state.speed += state.braking * dt;
+        } else {
+          state.speed += state.decel * dt;
+        }
+
+        // Off-road shoulder drag & sparks
+        const isOffRoad = Math.abs(state.playerX) > 1.02;
+        if (isOffRoad) {
+          if (state.speed > state.offRoadLimit) {
+            state.speed += state.offRoadDecel * dt;
+          }
+          if (state.speed > 1800 && Math.random() < 0.65) {
+            const sideSign = state.playerX > 0 ? 1 : -1;
+            spawnParticle(
+              width * 0.5 + sideSign * 55,
+              height - 65,
+              sideSign * (40 + Math.random() * 90),
+              -40 - Math.random() * 80,
+              Math.random() > 0.5 ? '#fbbf24' : '#38bdf8',
+              2.5,
+              0.35
+            );
+          }
+        }
+
+        // Clamp speed & advance track position
+        state.speed = Math.max(0, Math.min(currentTopSpeed, state.speed));
+        const dx = dt * 2.1 * speedPercent;
+        state.position = (state.position + state.speed * dt) % trackLength;
+        state.distanceGM += (state.speed * dt) / 100000;
+
+        // Steering & Centrifugal Curve Force
+        const effectiveCurve = playerSegment.curve * simConfig.curvatureIntensity;
+        let targetLean = 0;
+
+        if (steerLeft) {
+          state.playerX -= dx;
+          targetLean = -1;
+        } else if (steerRight) {
+          state.playerX += dx;
+          targetLean = 1;
+        }
+
+        // Centrifugal push outward on turns
+        state.playerX -= (dx * speedPercent * effectiveCurve * state.centrifugal);
+        state.playerX = Math.max(-1.85, Math.min(1.85, state.playerX));
+
+        // Smooth chassis lean & horizon parallax
+        state.steerAngle += (targetLean - state.steerAngle) * Math.min(1, dt * 10);
+        state.skyOffset -= (effectiveCurve * speedPercent * dt * 0.14) + (state.steerAngle * speedPercent * dt * 0.06);
+
+        // Update AI Traffic Cars & Check Near-Miss / Collisions
+        for (let i = 0; i < segments.length; i++) {
+          segments[i].cars.length = 0;
+        }
+
+        for (let i = 0; i < cars.length; i++) {
+          const car = cars[i];
+          car.z = (car.z + car.speed * dt) % trackLength;
+          const seg = findSegment(car.z);
+          seg.cars.push(car);
+
+          // Proximity check against player
+          const playerWorldZ = (state.position + state.playerZ) % trackLength;
+          let dz = car.z - playerWorldZ;
+          if (dz < -trackLength / 2) dz += trackLength;
+          if (dz > trackLength / 2) dz -= trackLength;
+
+          const lateralDist = Math.abs(state.playerX - car.offset);
+
+          if (Math.abs(dz) < SEGMENT_LENGTH * 1.15) {
+            if (lateralDist < 0.34 && state.speed > car.speed * 0.8) {
+              // Collision slowdown
+              state.speed = Math.max(2200, car.speed * 0.65);
+              state.shake = 0.85;
+              audio.playWhoosh(true);
+              for (let p = 0; p < 16; p++) {
+                spawnParticle(
+                  width * 0.5,
+                  height - 95,
+                  (Math.random() - 0.5) * 320,
+                  -60 - Math.random() * 180,
+                  '#fb7185',
+                  3.2,
+                  0.45
+                );
+              }
+            } else if (lateralDist >= 0.34 && lateralDist < 0.65 && state.speed > 9500 && !car.nearMissed) {
+              // Near-Miss Bonus!
+              car.nearMissed = true;
+              state.boostEnergy = Math.min(100, state.boostEnergy + 18);
+              state.nearMissCooldown = 1.6;
+              audio.playWhoosh(false);
+            }
+          } else if (Math.abs(dz) > SEGMENT_LENGTH * 8) {
+            car.nearMissed = false;
+          }
+        }
+
+        // Update particles
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const p = particles[i];
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          p.vy += 260 * dt;
+          p.life -= dt;
+          if (p.life <= 0) particles.splice(i, 1);
+        }
+
+        // Update Audio Engine
+        audio.update(state.speed / state.boostMaxSpeed, state.isBoosting, isOffRoad);
+
+        // Update HUD Readouts
+        updateHUD(baseSegment, playerPercent);
+      }
+
+      // -------------------------------------------------------------------------
+      // 11. MAIN FRAME RENDER PIPELINE
+      // -------------------------------------------------------------------------
+      function render() {
+        const baseSegment = findSegment(state.position);
+        const basePercent = (state.position % SEGMENT_LENGTH) / SEGMENT_LENGTH;
+        const playerSegment = findSegment(state.position + state.playerZ);
+        const playerPercent = ((state.position + state.playerZ) % SEGMENT_LENGTH) / SEGMENT_LENGTH;
+
+        const playerY = playerSegment.p1.world.y + (playerSegment.p2.world.y - playerSegment.p1.world.y) * playerPercent;
+        const cameraY = CAMERA_HEIGHT + playerY;
+
+        // Estimate dynamic horizon Y from road slope ahead
+        const slope = (playerSegment.p2.world.y - playerSegment.p1.world.y) / SEGMENT_LENGTH;
+        state.hillPitch += (slope * 180 - state.hillPitch) * 0.12;
+        const horizonY = height * 0.44 + state.hillPitch;
+
+        // 1. Render Cosmic Void, Starfield & Gargantua Supermassive Black Hole
+        renderBlackHoleAndCosmos(horizonY);
+
+        // 2. Project & Render 2.5D Pseudo-3D Road Segments (Near-to-Far Clipping, Far-to-Near Draw)
+        let maxY = height;
+        let x = 0;
+        let dx = -(baseSegment.curve * simConfig.curvatureIntensity * basePercent);
+
+        const visibleSegments = [];
+
+        for (let n = 0; n < DRAW_DISTANCE; n++) {
+          const segIndex = (baseSegment.index + n) % segments.length;
+          const segment = segments[segIndex];
+          const looped = segment.index < baseSegment.index;
+          const camZ = state.position - (looped ? trackLength : 0);
+
+          project(segment.p1, (state.playerX * ROAD_WIDTH) - x, cameraY, camZ, CAMERA_DEPTH, width, height, ROAD_WIDTH);
+          project(segment.p2, (state.playerX * ROAD_WIDTH) - x - dx, cameraY, camZ, CAMERA_DEPTH, width, height, ROAD_WIDTH);
+
+          x += dx;
+          dx += segment.curve * simConfig.curvatureIntensity;
+
+          segment.clip = maxY;
+
+          // Frustum & hill crest occlusion culling
+          if (
+            segment.p1.camera.z <= CAMERA_DEPTH ||
+            segment.p2.screen.y >= segment.p1.screen.y ||
+            segment.p2.screen.y >= maxY
+          ) {
+            continue;
+          }
+
+          drawSegment(
+            segment.p1.screen.x,
+            segment.p1.screen.y,
+            segment.p1.screen.w,
+            segment.p2.screen.x,
+            segment.p2.screen.y,
+            segment.p2.screen.w,
+            segment.color
+          );
+
+          visibleSegments.push(segment);
+          maxY = segment.p1.screen.y;
+        }
+
+        // 3. Painter's Algorithm (Far-to-Near) for Roadside Pylons, Arches & AI Hover-Traffic
+        for (let i = visibleSegments.length - 1; i >= 0; i--) {
+          const seg = visibleSegments[i];
+          const scale = seg.p1.screen.scale;
+          const roadW = seg.p1.screen.w;
+          const centerX = seg.p1.screen.x;
+          const baseY = seg.p1.screen.y;
+
+          // Roadside sprites & arches
+          for (let s = 0; s < seg.sprites.length; s++) {
+            const sp = seg.sprites[s];
+            const spriteX = centerX + sp.offset * roadW;
+            drawRoadsideSprite(sp, scale, spriteX, baseY, roadW);
+          }
+
+          // AI Hover-Cars
+          for (let c = 0; c < seg.cars.length; c++) {
+            const car = seg.cars[c];
+            const carX = centerX + car.offset * roadW;
+            drawTrafficCar(car, scale, carX, baseY, roadW);
+          }
+        }
+
+        // 4. Render Sparks & Exhaust Particles
+        for (let i = 0; i < particles.length; i++) {
+          const p = particles[i];
+          ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1.0;
+
+        // 5. Render Player Interceptor Car
+        renderPlayerInterceptor(
+          state.speed / state.maxSpeed,
+          keys.down,
+          state.isBoosting,
+          state.steerAngle
+        );
+      }
+
+      // -------------------------------------------------------------------------
+      // 12. HUD & INTERACTIVE UI BINDINGS
+      // -------------------------------------------------------------------------
+      const elSpeed = document.getElementById('hudSpeed');
+      const elBoostBar = document.getElementById('hudBoostBar');
+      const elBoostPct = document.getElementById('hudBoostPct');
+      const elGear = document.getElementById('hudGear');
+      const elDistance = document.getElementById('hudDistance');
+      const elDilation = document.getElementById('hudDilation');
+      const elNearMiss = document.getElementById('nearMissBadge');
+
+      function updateHUD() {
+        const kmh = Math.round((state.speed / state.maxSpeed) * 340);
+        elSpeed.textContent = kmh;
+
+        const boostRounded = Math.round(state.boostEnergy);
+        elBoostBar.style.width = `${boostRounded}%`;
+        elBoostPct.textContent = `${boostRounded}%`;
+
+        const gear = state.isBoosting ? 'OVERDRIVE' : `GEAR ${Math.min(6, Math.max(1, Math.ceil((kmh + 1) / 60)))}`;
+        elGear.textContent = gear;
+
+        elDistance.textContent = `${state.distanceGM.toFixed(2)} GM`;
+
+        // Relativistic time dilation gamma approximation
+        const beta = Math.min(0.96, (state.speed / state.boostMaxSpeed) * 0.78 * simConfig.curvatureIntensity);
+        const gamma = 1 / Math.sqrt(1 - beta * beta);
+        elDilation.textContent = `${gamma.toFixed(2)}x`;
+
+        if (state.nearMissCooldown > 0) {
+          elNearMiss.classList.remove('hidden');
+        } else {
+          elNearMiss.classList.add('hidden');
+        }
+      }
+
+      // Status Toast Helper
+      const statusBanner = document.getElementById('statusBanner');
+      const statusBannerText = document.getElementById('statusBannerText');
+      let toastTimeout = null;
+
+      function showToast(msg) {
+        statusBannerText.textContent = msg;
+        statusBanner.style.opacity = '1';
+        clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(() => {
+          statusBanner.style.opacity = '0';
+        }, 2000);
+      }
+
+      // Reset Position Function
+      function resetSimulation() {
+        state.position = 0;
+        state.playerX = 0;
+        state.speed = 0;
+        state.boostEnergy = 100;
+        state.steerAngle = 0;
+        state.skyOffset = 0;
+        showToast('Position Reset to Corridor Start');
+      }
+
+      // Keyboard Listeners
+      window.addEventListener('keydown', (e) => {
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
+          e.preventDefault();
+        }
+        switch (e.code) {
+          case 'ArrowLeft':
+          case 'KeyA':
+            keys.left = true;
+            break;
+          case 'ArrowRight':
+          case 'KeyD':
+            keys.right = true;
+            break;
+          case 'ArrowUp':
+          case 'KeyW':
+            keys.up = true;
+            break;
+          case 'ArrowDown':
+          case 'KeyS':
+            keys.down = true;
+            break;
+          case 'Space':
+          case 'ShiftLeft':
+          case 'ShiftRight':
+            keys.nitro = true;
+            break;
+          case 'KeyR':
+            resetSimulation();
+            break;
+        }
+      });
+
+      window.addEventListener('keyup', (e) => {
+        switch (e.code) {
+          case 'ArrowLeft':
+          case 'KeyA':
+            keys.left = false;
+            break;
+          case 'ArrowRight':
+          case 'KeyD':
+            keys.right = false;
+            break;
+          case 'ArrowUp':
+          case 'KeyW':
+            keys.up = false;
+            break;
+          case 'ArrowDown':
+          case 'KeyS':
+            keys.down = false;
+            break;
+          case 'Space':
+          case 'ShiftLeft':
+          case 'ShiftRight':
+            keys.nitro = false;
+            break;
+        }
+      });
+
+      // Touch & Mouse On-Screen Button Bindings
+      function bindHoldButton(elementId, keyName) {
+        const btn = document.getElementById(elementId);
+        if (!btn) return;
+        const press = (e) => {
+          e.preventDefault();
+          keys[keyName] = true;
+          btn.classList.add('active');
+        };
+        const release = (e) => {
+          e.preventDefault();
+          keys[keyName] = false;
+          btn.classList.remove('active');
+        };
+        btn.addEventListener('mousedown', press);
+        btn.addEventListener('mouseup', release);
+        btn.addEventListener('mouseleave', release);
+        btn.addEventListener('touchstart', press, { passive: false });
+        btn.addEventListener('touchend', release, { passive: false });
+        btn.addEventListener('touchcancel', release, { passive: false });
+      }
+
+      bindHoldButton('touchLeft', 'left');
+      bindHoldButton('touchRight', 'right');
+      bindHoldButton('touchGas', 'up');
+      bindHoldButton('touchBrake', 'down');
+      bindHoldButton('touchNitro', 'nitro');
+
+      // Audio Toggle Button
+      const btnAudio = document.getElementById('btnAudio');
+      const iconAudioOn = document.getElementById('iconAudioOn');
+      const iconAudioOff = document.getElementById('iconAudioOff');
+      const audioLabel = document.getElementById('audioLabel');
+
+      btnAudio.addEventListener('click', () => {
+        const isOn = audio.toggle();
+        if (isOn) {
+          iconAudioOn.classList.remove('hidden');
+          iconAudioOff.classList.add('hidden');
+          audioLabel.textContent = 'Synth On';
+          showToast('Procedural Synth Audio Active');
+        } else {
+          iconAudioOn.classList.add('hidden');
+          iconAudioOff.classList.remove('hidden');
+          audioLabel.textContent = 'Sound Off';
+        }
+      });
+
+      // Reset Button
+      document.getElementById('btnReset').addEventListener('click', resetSimulation);
+
+      // Collapsible Singularity & Sim Controls Drawer
+      const btnToggleControls = document.getElementById('btnToggleControls');
+      const simControlsDrawer = document.getElementById('simControlsDrawer');
+      let drawerOpen = true;
+
+      btnToggleControls.addEventListener('click', () => {
+        drawerOpen = !drawerOpen;
+        if (drawerOpen) {
+          simControlsDrawer.classList.remove('hidden');
+        } else {
+          simControlsDrawer.classList.add('hidden');
+        }
+      });
+
+      // Live Singularity & Sim Control Sliders
+      const sliderBrightness = document.getElementById('sliderBrightness');
+      const valBrightness = document.getElementById('valBrightness');
+      sliderBrightness.addEventListener('input', (e) => {
+        simConfig.diskBrightness = parseFloat(e.target.value);
+        valBrightness.textContent = `${simConfig.diskBrightness.toFixed(2)}x`;
+      });
+
+      const sliderLensing = document.getElementById('sliderLensing');
+      const valLensing = document.getElementById('valLensing');
+      sliderLensing.addEventListener('input', (e) => {
+        simConfig.lensingDistortion = parseFloat(e.target.value);
+        valLensing.textContent = `${simConfig.lensingDistortion.toFixed(2)}x`;
+      });
+
+      const sliderCurvature = document.getElementById('sliderCurvature');
+      const valCurvature = document.getElementById('valCurvature');
+      sliderCurvature.addEventListener('input', (e) => {
+        simConfig.curvatureIntensity = parseFloat(e.target.value);
+        valCurvature.textContent = `${simConfig.curvatureIntensity.toFixed(2)}x`;
+      });
+
+      // Auto-Drive Toggle Switch
+      const btnAutoDrive = document.getElementById('btnAutoDrive');
+      const autoDriveKnob = document.getElementById('autoDriveKnob');
+      btnAutoDrive.addEventListener('click', () => {
+        simConfig.autoDrive = !simConfig.autoDrive;
+        btnAutoDrive.setAttribute('aria-checked', String(simConfig.autoDrive));
+        if (simConfig.autoDrive) {
+          btnAutoDrive.classList.remove('bg-slate-700');
+          btnAutoDrive.classList.add('bg-sky-500');
+          autoDriveKnob.classList.remove('translate-x-1');
+          autoDriveKnob.classList.add('translate-x-6');
+          showToast('Auto-Drive AI Pilot Engaged');
+        } else {
+          btnAutoDrive.classList.add('bg-slate-700');
+          btnAutoDrive.classList.remove('bg-sky-500');
+          autoDriveKnob.classList.add('translate-x-1');
+          autoDriveKnob.classList.remove('translate-x-6');
+          showToast('Manual Flight Control Restored');
+        }
+      });
+
+      // -------------------------------------------------------------------------
+      // 13. MAIN ANIMATION LOOP (Starts on window.onload)
+      // -------------------------------------------------------------------------
+      let lastTimestamp = 0;
+
+      function gameLoop(timestamp) {
+        if (!lastTimestamp) lastTimestamp = timestamp;
+        const dt = Math.min(0.05, (timestamp - lastTimestamp) / 1000);
+        lastTimestamp = timestamp;
+
+        update(dt);
+        render();
+
+        requestAnimationFrame(gameLoop);
+      }
+
+      window.onload = function () {
+        resizeCanvas();
+        showToast('Press W / ↑ or Thrust to Approach Event Horizon');
+        requestAnimationFrame(gameLoop);
+      };
+    })();
+  </script>
+</body>
+</html>
